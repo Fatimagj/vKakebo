@@ -34,6 +34,10 @@ class Movimiento:
 class Ingreso(Movimiento):     
     def __repr__(self):
         return f"Ingreso: {self.fecha} {self.concepto} {self.cantidad:.2f}"
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        return self.concepto == other.concepto and self.cantidad == other.cantidad and self.fecha == other.fecha
         
 class Gasto(Movimiento):
     def __init__(self, concepto, fecha, cantidad, categoria):
@@ -48,6 +52,11 @@ class Gasto(Movimiento):
         
     def __repr__(self):
         return f"Gasto ({self.categoria.name}): {self.fecha} {self.concepto} {self.cantidad:.2f}"
+    
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        return self.concepto == other.concepto and self.cantidad == other.cantidad and self.fecha == other.fecha and self.categoria == other.categoria
 
 class CategoriaGastos(Enum):
     NECESIDAD = 1
@@ -58,11 +67,11 @@ class CategoriaGastos(Enum):
 class Dao:
     def __init__(self, ruta):
         self.ruta = ruta
-        with open(self.ruta, "w", newline="") as f:
-            f.write("concepto, fecha, cantidad, categoria\n")
         if not os.path.exists(self.ruta):
             with open(self.ruta, "w", newline="") as f:
                 f.write("concepto,fecha,cantidad,categoria\n")
+        self.puntero_lectura = 0
+
     def grabar(self,movimiento):
       
         with open(self.ruta, "a", newline="") as f:
@@ -77,14 +86,20 @@ class Dao:
     def leer(self):
         with open(self.ruta, "r") as f:
             reader = csv.DictReader(f)
+            contador = 0
             for registro in reader:
                 if registro['categoria'] == "":
                     #instanciar ingreso con los datos de registro
                     variable = Ingreso(registro['concepto'], date.fromisoformat(registro['fecha']), float(registro['cantidad']))
-                elif registro['categoria'] in  [cat.value for cat in CategoriaGastos]:
+                elif registro['categoria'] in  [str(cat.value) for cat in CategoriaGastos]:
                     #instanciar Gasto con los datos de registro
-                    variable = Gasto(registro['concepto'], date.fromisoformat(registro['fecha']), float(registro['cantidad']), CategoriaGastos(int(registro['categoria.'])))
-                
-                return variable
+                    variable = Gasto(registro['concepto'], date.fromisoformat(registro['fecha']), float(registro['cantidad']), CategoriaGastos(int(registro['categoria'])))
+
+                if contador == self.puntero_lectura:
+                    self.puntero_lectura += 1
+                    return variable
+                contador += 1
+
+            return None
 
                 

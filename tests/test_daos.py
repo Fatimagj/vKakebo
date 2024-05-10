@@ -15,20 +15,27 @@
 """
 from kakebo.modelos import Dao, Ingreso, Gasto, CategoriaGastos
 from datetime import date
+import os
+
+def borrar_fichero(path):
+    if os.path.exists(path):
+        os.remove(path)
 
 def test_crear_dao():
     ruta = "datos/test_movimientos.csv"
+    borrar_fichero(ruta)
     dao = Dao(ruta)
     assert dao.ruta == ruta
     
     with open(ruta, "r") as f: #con essto nos aseguramos qeu se cierre sin poner f.close
         cabecera = f.readline()
-        assert cabecera == "concepto, fecha, cantidad, categoria\n"
+        assert cabecera == "concepto,fecha,cantidad,categoria\n"
         registro = f.readline()
         assert registro == ""
 
 def test_guardar_ingreso_y_gasto():
     ruta = "datos/test_movimientos.csv"
+    borrar_fichero(ruta)
     dao = Dao(ruta)
     ing = Ingreso("Un concepto", date(1999, 12, 12), 12.34)
     dao.grabar(ing)
@@ -46,6 +53,7 @@ def test_guardar_ingreso_y_gasto():
 
 def test_leer_ingreso_y_gasto():
     ruta = "datos/test_movimientos.csv"
+
     with open(ruta,"w", newline="") as f:
         f.write("concepto,fecha,cantidad,categoria\n")
         f.write("Ingreso,1999-12-31,12.34,\n")
@@ -57,7 +65,7 @@ def test_leer_ingreso_y_gasto():
     assert movimiento1 == Ingreso("Ingreso", date(1999, 12, 31), 12.34)
     
     movimiento2 = dao.leer()
-    assert movimiento2 == Gasto("Gasto", date(1999, 1, 1), 55, CategoriaGastos.EXTRAS)
+    assert movimiento2 == Gasto("Gastos", date(1999, 1, 1), 55, CategoriaGastos.EXTRAS)
     
     movimiento3 = dao.leer()
     assert movimiento3 is None
