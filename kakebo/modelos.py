@@ -1,6 +1,7 @@
 from datetime import date
 from enum import Enum
 import csv
+import os
 class Movimiento:
     def __init__(self, concepto, fecha, cantidad):
         self.concepto = concepto
@@ -59,7 +60,9 @@ class Dao:
         self.ruta = ruta
         with open(self.ruta, "w", newline="") as f:
             f.write("concepto, fecha, cantidad, categoria\n")
-    
+        if not os.path.exists(self.ruta):
+            with open(self.ruta, "w", newline="") as f:
+                f.write("concepto,fecha,cantidad,categoria\n")
     def grabar(self,movimiento):
       
         with open(self.ruta, "a", newline="") as f:
