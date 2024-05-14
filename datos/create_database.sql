@@ -5,6 +5,6 @@ CREATE TABLE "movimientos" (
 	"fecha"	TEXT NOT NULL,
 	"cantidad"	REAL NOT NULL,
 	"categoria"	INTEGER,
-	PRIMARY KEY("id")
+	PRIMARY KEY("id" AUTOINCREMENT)
 );
 

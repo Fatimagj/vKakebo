@@ -13,18 +13,20 @@
 
 
 """
-from kakebo.modelos import Dao, Ingreso, Gasto, CategoriaGastos
+from kakebo.modelos import Dao_CSV, Ingreso, Gasto, CategoriaGastos, DaoSqlite
 from datetime import date
 import os
+import sqlite3
 
+RUTA_SQLITE =     ruta = "datos/movimientos_test.db"
 def borrar_fichero(path):
     if os.path.exists(path):
         os.remove(path)
 
-def test_crear_dao():
+def test_crear_dao_csv():
     ruta = "datos/test_movimientos.csv"
     borrar_fichero(ruta)
-    dao = Dao(ruta)
+    dao = Dao_CSV(ruta)
     assert dao.ruta == ruta
     
     with open(ruta, "r") as f: #con essto nos aseguramos qeu se cierre sin poner f.close
@@ -33,10 +35,10 @@ def test_crear_dao():
         registro = f.readline()
         assert registro == ""
 
-def test_guardar_ingreso_y_gasto():
+def test_guardar_ingreso_y_gasto_csv():
     ruta = "datos/test_movimientos.csv"
     borrar_fichero(ruta)
-    dao = Dao(ruta)
+    dao = Dao_CSV(ruta)
     ing = Ingreso("Un concepto", date(1999, 12, 12), 12.34)
     dao.grabar(ing)
     gasto = Gasto("Un gasto", date(1999, 1, 1), 23.45, CategoriaGastos.EXTRAS)
@@ -51,7 +53,7 @@ def test_guardar_ingreso_y_gasto():
         registro = f.readline()
         assert registro == ""
 
-def test_leer_ingreso_y_gasto():
+def test_leer_ingreso_y_gasto_csv():
     ruta = "datos/test_movimientos.csv"
 
     with open(ruta,"w", newline="") as f:
@@ -59,7 +61,7 @@ def test_leer_ingreso_y_gasto():
         f.write("Ingreso,1999-12-31,12.34,\n")
         f.write("Gastos,1999-01-01,55.0,4\n")
 
-    dao = Dao(ruta)
+    dao = Dao_CSV(ruta)
     
     movimiento1 = dao.leer()
     assert movimiento1 == Ingreso("Ingreso", date(1999, 12, 31), 12.34)
@@ -69,3 +71,61 @@ def test_leer_ingreso_y_gasto():
     
     movimiento3 = dao.leer()
     assert movimiento3 is None
+
+def test_crear_dao_sqlite():
+    ruta = RUTA_SQLITE
+    dao = DaoSqlite(ruta)
+
+    assert dao.ruta == ruta
+
+def test_leer_dao_sqlite():
+    #preparar la tabla movimiento como toca, borrar e insetar un ingreso y un gasto
+    con = sqlite3.connect(RUTA_SQLITE)
+    cur = con.cursor()
+
+    query = "DELETE FROM movimientos;"
+    cur.execute(query)
+    con.commit()
+
+    query = "INSERT INTO movimientos (id, tipo_movimiento, concepto, fecha, cantidad, categoria) VALUES (?, ?, ?, ?, ?, ?)"
+    
+    cur.executemany(query, ((1, "I", "Un ingreso cualquiera", date(2024, 5, 14), 100, None), 
+                            (2, "G", "Un gasto cualquiera", date(2024, 5, 1), 123, 3)))
+    
+    con.commit()
+    con.close()
+
+    dao = DaoSqlite(RUTA_SQLITE)
+    movimiento = dao.leer(1)
+    assert movimiento == Ingreso("Un ingreso cualquiera", date(2024, 5, 14), 100)
+
+    movimiento = dao.leer(2)
+    assert movimiento == Gasto("Un gasto cualquiera", date(2024, 5, 1), 123, CategoriaGastos.OCIO_VICIO)
+
+def test_grabar_sqlite():
+     #preparar la tabla movimiento como toca, borrar e insetar un ingreso y un gasto
+    con = sqlite3.connect(RUTA_SQLITE)
+    cur = con.cursor()
+
+    query = "DELETE FROM movimientos;"
+    cur.execute(query)
+    con.commit()
+    con.close()
+
+    ing = Ingreso("Un concepto cualquiera", date(1990,1,1), 123)
+    dao = DaoSqlite(RUTA_SQLITE)
+    dao.grabar(ing)
+
+    con = sqlite3.connect(RUTA_SQLITE)
+    cur = con.cursor()
+
+    query = "SELECT id, tipo_movimientos, conepto, fecha, cantidad, categoria FROM movimientos order by id desc LIMIT 1"
+    res = cur.execute(query)
+    fila = res.fetchone()
+
+    assert fila[1] == "I"
+    assert fila[2] == "G"
+    assert fila[3] == "1990-01-01"
+    assert fila[4] == 123.0
+    assert fila [5] is None
+

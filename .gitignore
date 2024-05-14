@@ -4,3 +4,4 @@ venv/
 datos/**.csv
 datos/**.db 
 movimientosCONMISANOTACIONES.sqbpro
+movimientos.db/
