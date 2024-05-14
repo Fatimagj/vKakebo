@@ -1,2 +1,6 @@
 venv/
 **__pycache__/
+.vscode/
+datos/**.csv
+datos/**.db 
+movimientosCONMISANOTACIONES.sqbpro
