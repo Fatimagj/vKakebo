@@ -4,12 +4,14 @@ import csv
 import os
 import sqlite3
 class Movimiento:
-    def __init__(self, concepto, fecha, cantidad):
+    def __init__(self, concepto, fecha, cantidad, id=None):
         self.concepto = concepto
         self.fecha = fecha
         self.cantidad = cantidad
+        self.id = id
         self.validar_tipos()
         self.validar_inputs()
+   
         
     def validar_tipos(self):
         if not isinstance(self.concepto, str):
@@ -41,8 +43,8 @@ class Ingreso(Movimiento):
         return self.concepto == other.concepto and self.cantidad == other.cantidad and self.fecha == other.fecha
         
 class Gasto(Movimiento):
-    def __init__(self, concepto, fecha, cantidad, categoria):
-        super().__init__(concepto, fecha, cantidad)
+    def __init__(self, concepto, fecha, cantidad, categoria, id=None):
+        super().__init__(concepto, fecha, cantidad, id)
 
         self.categoria = categoria
         self.validar_categoria()
@@ -120,8 +122,41 @@ class DaoSqlite:
 
         if valores :
             if valores[1] == "I":
-                return Ingreso(valores[2], date.fromisoformat(valores[3]), valores[4])
+                return Ingreso(valores[2], date.fromisoformat(valores[3]), valores[4], valores[0])
+                
             elif valores[1] == "G":
-                return Gasto(valores[2], date.fromisoformat(valores[3]), valores[4], CategoriaGastos(valores[5]))
-        
+                return Gasto(valores[2], date.fromisoformat(valores[3]), valores[4], CategoriaGastos(valores[5]), valores[0])
+                
         return None
+    
+    def grabar(self, movimiento):
+        con =sqlite3.connect(self.ruta) #conexción y damos la ruta del fichero
+        cur = con.cursor() #creamos el cursor
+
+
+        if isinstance(movimiento, Ingreso):
+            tipo_movimiento = "I"
+            categoria = None
+        elif isinstance(movimiento, Gasto):
+            tipo_movimiento = "G"
+            categoria = movimiento.categoria.value
+
+        if movimiento.id is None:
+            query = "INSERT INTO movimientos (tipo_movimiento, concepto, fecha, cantidad, categoria) VALUES (?, ?, ?, ?, ?)" #"INSERT INTO movimientos (tipo_movimiento, concepto, fecha, cantidad, categoria) VALUES ('G', 'comprar pienso perro', '2024-05-14', 40, 1)"#crear la consulta para luego poderla consultar. En la scomillas hablamos SQL.
+            
+            #cur.execute(query, ('G', 'pienso para Ron', '2024-05-14', 40, 1)) #ejecutar esto es lo que queremos hacer ahora, con los if, y luego ejecutamos abajo ya que si lo hacemos asi es una chapuza.
+  
+            cur.execute(query, (tipo_movimiento, movimiento.concepto, movimiento.fecha, movimiento.cantidad, categoria )) #los comunes los podemos  poner aqui, ESTO ES SOLO PARA MODIFICAR LA BASE DE DATOS, NO DEVUELVE RESULTADO
+
+
+        else:
+            query = "UPDATE movimientos set concepto = ?, fecha = ?, cantidad = ?, categoria = ? WHERE id = ?"
+
+            cur.execute(query, (movimiento.concepto, movimiento.fecha, movimiento.cantidad, categoria, movimiento.id))
+            
+        con.commit() #confirmamos la consulta
+        con.close() #cerramos la consulta si no queremos hacer nada más.
+            #este metodo no devuelve nada, solo se puede quejar, ya que solo tiene que grabar
+
+    def borrar(self, id):
+        pass #como montamos el test y el método borrar

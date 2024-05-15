@@ -23,6 +23,16 @@ def borrar_fichero(path):
     if os.path.exists(path):
         os.remove(path)
 
+def borrar_movimientos_sqlite():
+     #preparar la tabla movimiento como toca, borrar e insetar un ingreso y un gasto
+    con = sqlite3.connect(RUTA_SQLITE)
+    cur = con.cursor()
+
+    query = "DELETE FROM movimientos;"
+    cur.execute(query)
+    con.commit()
+    con.close()
+
 def test_crear_dao_csv():
     ruta = "datos/test_movimientos.csv"
     borrar_fichero(ruta)
@@ -79,13 +89,9 @@ def test_crear_dao_sqlite():
     assert dao.ruta == ruta
 
 def test_leer_dao_sqlite():
-    #preparar la tabla movimiento como toca, borrar e insetar un ingreso y un gasto
+    borrar_movimientos_sqlite()
     con = sqlite3.connect(RUTA_SQLITE)
     cur = con.cursor()
-
-    query = "DELETE FROM movimientos;"
-    cur.execute(query)
-    con.commit()
 
     query = "INSERT INTO movimientos (id, tipo_movimiento, concepto, fecha, cantidad, categoria) VALUES (?, ?, ?, ?, ?, ?)"
     
@@ -103,29 +109,54 @@ def test_leer_dao_sqlite():
     assert movimiento == Gasto("Un gasto cualquiera", date(2024, 5, 1), 123, CategoriaGastos.OCIO_VICIO)
 
 def test_grabar_sqlite():
-     #preparar la tabla movimiento como toca, borrar e insetar un ingreso y un gasto
-    con = sqlite3.connect(RUTA_SQLITE)
-    cur = con.cursor()
-
-    query = "DELETE FROM movimientos;"
-    cur.execute(query)
-    con.commit()
-    con.close()
-
+    #preparar el test
+    borrar_movimientos_sqlite()
+    
     ing = Ingreso("Un concepto cualquiera", date(1990,1,1), 123)
     dao = DaoSqlite(RUTA_SQLITE)
     dao.grabar(ing)
 
+    #comprobar el test, aqui comprobamos una tupla
     con = sqlite3.connect(RUTA_SQLITE)
     cur = con.cursor()
 
-    query = "SELECT id, tipo_movimientos, conepto, fecha, cantidad, categoria FROM movimientos order by id desc LIMIT 1"
+    query = "SELECT id, tipo_movimiento, concepto, fecha, cantidad, categoria FROM movimientos order by id desc LIMIT 1"
     res = cur.execute(query)
     fila = res.fetchone()
+    con.close()
 
     assert fila[1] == "I"
-    assert fila[2] == "G"
+    assert fila[2] == "Un concepto cualquiera"
     assert fila[3] == "1990-01-01"
     assert fila[4] == 123.0
     assert fila [5] is None
+
+def test_update_sqlite():
+    borrar_movimientos_sqlite() #borramos
+    
+    con = sqlite3.connect(RUTA_SQLITE) #conectamos
+    cur = con.cursor() #cursor
+
+    query = "INSERT INTO movimientos (id, tipo_movimiento, concepto, fecha, cantidad) VALUES (1, 'I', 'concepto original', '0001-01-01', 0.1)"
+
+    cur.execute(query)
+    con.commit()
+    con.close()
+
+    dao = DaoSqlite(RUTA_SQLITE)
+
+    movimiento = dao.leer(1) #id
+    movimiento.concepto = "Concepto cambiado"
+    movimiento.fecha = "2024-01-04"
+    movimiento.cantidad = 32
+
+    dao.grabar(movimiento)
+
+    #commprobar la modificación
+
+    modificado = dao.leer(1)
+    assert isinstance(modificado, Ingreso)
+    assert modificado.concepto == "Concepto cambiado"
+    assert modificado.fecha == date(2024, 1, 4)
+    assert modificado.cantidad == 32
 
