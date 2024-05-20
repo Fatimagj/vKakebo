@@ -3,6 +3,7 @@ from enum import Enum
 import csv
 import os
 import sqlite3
+
 class Movimiento:
     def __init__(self, concepto, fecha, cantidad, id=None):
         self.concepto = concepto
@@ -159,4 +160,35 @@ class DaoSqlite:
             #este metodo no devuelve nada, solo se puede quejar, ya que solo tiene que grabar
 
     def borrar(self, id):
-        pass #como montamos el test y el método borrar
+        con =sqlite3.connect(self.ruta) #conexción y damos la ruta del fichero
+        cur = con.cursor() #creamos el cursor
+
+        query  = "DELETE FROM movimientos WHERE id= ?"
+        cur.execute(query, (id,))
+        con.commit()
+        con.close()
+
+    def leerTodo(self):
+        con = sqlite3.connect(self.ruta)
+        cur = con.cursor()
+
+        query = "SELECT id, tipo_movimiento, concepto, fecha, cantidad, categoria FROM movimientos"
+
+        res = cur.execute(query)
+        valores = res.fetchall() # para coger de la base de datos 
+        con.close()
+        
+        lista_completa= []
+        for valor in valores :
+            if valor[1] == "I":
+                lista_completa.append(Ingreso(valor[2], date.fromisoformat(valor[3]), valor[4], valor[0]))
+                
+            elif valor[1] == "G":
+                lista_completa.append(Gasto(valor[2], date.fromisoformat(valor[3]), valor[4], CategoriaGastos(valor[5]), valores[0]))
+                
+        return lista_completa
+
+    """devuelve una lista con todos los registros de la tabla movimeinto, ordenados por id ascendente y en forma de instancia de ingreso o gasto según convenga. Cada item de la lissta deber ser una instancia de Ingreso o Gasto, no la tupla que devuelve Squlite3"""
+    #hacer test y metodo que nos devuelva todos los movimientos que haya en la base de datos, que me los devuelva ordandos por id, devolver en una lista. si no hya movimientos devoler lista vacia
+    
+    #mirar la función leer cambiando el return por un append para meterlo en una lista, hay que modificar el WHERE y en vez de fetchone un all
